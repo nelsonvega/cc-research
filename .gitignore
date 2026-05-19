@@ -20,3 +20,4 @@ web/tsconfig.tsbuildinfo
 
 # Run data (user content, not source)
 data/runs/
+.history/
