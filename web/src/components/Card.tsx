@@ -1,4 +1,4 @@
-import type { Card as CardT } from "../types";
+import type { Card as CardT, Rating } from "../types";
 
 function normalizeUrl(input: string | null | undefined): string | null {
   if (!input) return null;
@@ -26,14 +26,38 @@ function formatDate(input: string | null | undefined): string | null {
   }
 }
 
+function RatingBadge({ kind, rating }: { kind: "value" | "validity"; rating: Rating | null | undefined }) {
+  if (!rating) return null;
+  return (
+    <span className={`rating-badge rating-${rating}`} title={`${kind}: ${rating}`}>
+      <span className="rating-kind">{kind}</span>
+      <span className="rating-value">{rating}</span>
+    </span>
+  );
+}
+
 export function Card({ card, topic }: { card: CardT; topic?: string }) {
   const url = normalizeUrl(card.source_url);
   const date = formatDate(card.published_date);
+  const scored = card.value || card.validity || card.analysis_note;
   return (
     <article className="news-card card-anim">
-      {topic && <span className="pill">{topic}</span>}
+      <div className="card-top">
+        {topic && <span className="pill">{topic}</span>}
+        {scored && (
+          <div className="rating-row">
+            <RatingBadge kind="value" rating={card.value} />
+            <RatingBadge kind="validity" rating={card.validity} />
+          </div>
+        )}
+      </div>
       <h3>{card.title}</h3>
       <div className="summary">{card.body}</div>
+      {card.analysis_note && (
+        <div className="analysis-note" title="Editorial analysis">
+          ✎ {card.analysis_note}
+        </div>
+      )}
       {(card.source_name || url || date) && (
         <div className="meta">
           {url ? (

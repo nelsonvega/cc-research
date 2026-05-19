@@ -23,10 +23,20 @@ export function RunButton() {
         sources: settings.sources,
         mode: settings.mode,
         model_override: settings.modelOverride,
+        models: settings.models,
         concurrency: settings.concurrency,
+        combined_topics: settings.combinedTopics,
+        analyze_cards: settings.analyzeCards,
+        analyzer_model: null,
       });
+      // Compute (topic × model) tags so the live UI pre-orders sections correctly.
+      const effectiveModels = settings.models.length ? settings.models : [];
+      const tagList: string[] =
+        effectiveModels.length > 1
+          ? settings.topics.flatMap((t) => effectiveModels.map((m) => `${t} · ${m}`))
+          : settings.topics;
       live.clear();
-      live.start(run_id, settings.mode, settings.topics);
+      live.start(run_id, settings.mode, tagList);
       const unsub = subscribeRunEvents(run_id, (ev) => {
         live.applyEvent(ev);
         if (ev.type === "done") {
@@ -64,7 +74,17 @@ export function RunButton() {
           disabled={!canRun}
           title={settings.topics.length === 0 ? "Add at least one topic" : undefined}
         >
-          {busy ? "Filing…" : `▶ File ${settings.topics.length} topic${settings.topics.length === 1 ? "" : "s"}`}
+          {busy
+            ? "Filing…"
+            : (() => {
+                const t = settings.topics.length;
+                const m = Math.max(settings.models.length, 1);
+                const tasks = settings.combinedTopics ? m : t * m;
+                const suffix = m > 1 ? ` × ${m} models` : "";
+                if (settings.combinedTopics)
+                  return `▶ File ${t} topic${t === 1 ? "" : "s"} together${suffix} · ${tasks} call${tasks === 1 ? "" : "s"}`;
+                return `▶ File ${t} topic${t === 1 ? "" : "s"}${suffix} · ${tasks} call${tasks === 1 ? "" : "s"}`;
+              })()}
         </button>
       )}
     </section>

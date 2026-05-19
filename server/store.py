@@ -87,7 +87,19 @@ def _render_card_md(c: Card) -> str:
     if c.published_date:
         src_bits.append(c.published_date)
     src_line = f"**Source:** {' · '.join(src_bits)}\n\n" if src_bits else ""
-    return f"## {c.title}\n{src_line}{c.body}\n"
+
+    analysis = ""
+    if c.value or c.validity or c.analysis_note:
+        score_bits = []
+        if c.value:
+            score_bits.append(f"value: **{c.value}**")
+        if c.validity:
+            score_bits.append(f"validity: **{c.validity}**")
+        score_line = " · ".join(score_bits)
+        note_line = f" — {c.analysis_note}" if c.analysis_note else ""
+        analysis = f"> {score_line}{note_line}\n\n"
+
+    return f"## {c.title}\n{src_line}{analysis}{c.body}\n"
 
 
 def write_index_md(run: Run) -> None:

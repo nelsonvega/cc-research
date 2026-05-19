@@ -42,6 +42,27 @@ def get_run(run_id: str) -> Run:
     return run
 
 
+@router.get("/api/runs/{run_id}/topics/{slug}.md")
+def export_topic_markdown(run_id: str, slug: str) -> PlainTextResponse:
+    """Single topic file. Slug is the topic-slug from RunSummary.topic_details."""
+    run = load_run(run_id)
+    if run is None:
+        raise HTTPException(404, "Run not found")
+    # Defensive: only serve a slug that belongs to this run.
+    valid_slugs = {t.slug for t in run.topics}
+    if slug not in valid_slugs:
+        raise HTTPException(404, "Topic file not found in this run")
+    path = run_dir(run_id) / f"{slug}.md"
+    if not path.exists():
+        raise HTTPException(404, "Topic file does not exist on disk")
+    body = path.read_text(encoding="utf-8")
+    return PlainTextResponse(
+        content=body,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{run_id}-{slug}.md"'},
+    )
+
+
 @router.get("/api/runs/{run_id}/export.md")
 def export_run_markdown(run_id: str) -> PlainTextResponse:
     """Single concatenated markdown document for a finished run.

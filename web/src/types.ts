@@ -11,12 +11,17 @@ export type TopicStatus =
 
 export type Source = { name: string; url: string; topics: string[] };
 
+export type Rating = "high" | "medium" | "low";
+
 export type Card = {
   title: string;
   source_name?: string | null;
   source_url?: string | null;
   published_date?: string | null;
   body: string;
+  value?: Rating | null;
+  validity?: Rating | null;
+  analysis_note?: string | null;
 };
 
 export type TokenUsage = { input: number; output: number };
@@ -38,7 +43,11 @@ export type RunRequest = {
   sources: Source[];
   mode: Mode;
   model_override: string | null;
+  models: string[];
   concurrency: number;
+  combined_topics: boolean;
+  analyze_cards: boolean;
+  analyzer_model: string | null;
 };
 
 export type Run = {
@@ -93,6 +102,7 @@ export type SseEventType =
   | "topic_start"
   | "tool_use"
   | "card"
+  | "card_update"
   | "usage"
   | "topic_complete"
   | "error"

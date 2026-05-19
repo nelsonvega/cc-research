@@ -14,12 +14,19 @@ class Source(BaseModel):
     topics: list[str] = Field(default_factory=list)
 
 
+Rating = Literal["high", "medium", "low"]
+
+
 class Card(BaseModel):
     title: str
     source_name: str | None = None
     source_url: str | None = None
     published_date: str | None = None
     body: str
+    # Filled in by the post-research analyzer; absent for legacy runs.
+    value: Rating | None = None
+    validity: Rating | None = None
+    analysis_note: str | None = None
 
 
 class TokenUsage(BaseModel):
@@ -43,8 +50,16 @@ class RunRequest(BaseModel):
     topics: list[str] = Field(..., min_length=1, max_length=20)
     sources: list[Source] = Field(default_factory=list)
     mode: Mode
+    # Single-model override is kept for back-compat; if `models` is provided,
+    # it takes precedence and each topic runs once per model.
     model_override: str | None = None
+    models: list[str] = Field(default_factory=list)
     concurrency: int = Field(default=3, ge=1, le=8)
+    # Combine all topics into a single API call when True.
+    combined_topics: bool = False
+    # Post-research analyzer that scores each card on value + validity.
+    analyze_cards: bool = True
+    analyzer_model: str | None = None  # falls back to the topic's model
 
 
 class Run(BaseModel):
@@ -83,6 +98,7 @@ EventType = Literal[
     "topic_start",
     "tool_use",
     "card",
+    "card_update",
     "usage",
     "topic_complete",
     "error",

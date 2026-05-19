@@ -111,6 +111,15 @@ export function TopicHistory() {
               <div className="topic-history-row1">
                 <span className="topic-history-name">{e.topic}</span>
                 <span className={`status-pill ${e.status}`}>{e.status}</span>
+                <a
+                  className="topic-history-download"
+                  href={`/api/runs/${encodeURIComponent(e.runId)}/topics/${encodeURIComponent(e.slug)}.md`}
+                  title={`Download ${e.slug}.md`}
+                  onClick={(ev) => ev.stopPropagation()}
+                  download
+                >
+                  ⬇
+                </a>
                 <button
                   className="topic-history-delete"
                   title="Delete this run (removes all of its topic files)"

@@ -192,6 +192,17 @@ export const useLiveRun = create<LiveRunState>((set, get) => ({
           }
           break;
         }
+        case "card_update": {
+          // Re-score / re-content for an existing card (analyzer pass).
+          if (ev.topic) {
+            const card = (ev as any).card as Card;
+            const prev = s.topics[ev.topic];
+            const existing = prev?.cards ?? [];
+            const next = existing.map((c) => (c.title === card.title ? card : c));
+            upsertTopic(ev.topic, { cards: next });
+          }
+          break;
+        }
         case "usage": {
           if (ev.topic) {
             const prevTok = s.topics[ev.topic];
