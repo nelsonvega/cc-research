@@ -274,12 +274,13 @@ a:hover { text-decoration: underline; }
   gap: 16px;
 }
 
-/* Row 1: filter / mode / model — 3 columns */
+/* Row 1: filter / mode / model — 3 columns, top-aligned so adding
+   multiple model chips doesn't stretch the other cells. */
 .controls-row--meta {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1.6fr;
   gap: 16px;
-  align-items: end;
+  align-items: start;
 }
 .controls-row--meta .controls-cell {
   display: flex;
@@ -288,6 +289,22 @@ a:hover { text-decoration: underline; }
   min-width: 0;
 }
 .controls-row--meta .controls-cell .label { margin: 0; }
+
+/* Model picker chip strip — single scrollable row so N selected models
+   don't push the header taller. */
+.controls-row--meta .chip-row {
+  flex-wrap: wrap;
+  max-height: 56px;       /* ~2 rows of compact chips, then scroll */
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.chip--model {
+  padding: 3px 8px;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.chip--model button { font-size: 11px; }
 
 /* Row 2: topics editor — full width */
 .controls-row--topics > section {

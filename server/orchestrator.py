@@ -9,7 +9,7 @@ from typing import AsyncIterator
 from .analyzer import analyze_cards
 from .config import MODE_DEFAULTS, MODE_MAX_TOKENS, MODE_TIMEOUT_S, provider_for_model, settings
 from .models import Card, Event, Run, RunRequest, TokenUsage, TopicResult
-from .prompts import build_prompt
+from .prompts import build_combined_prompt, build_prompt
 from .providers import anthropic as anthropic_provider
 from .providers import openrouter as openrouter_provider
 from .providers.base import ProviderError
@@ -132,8 +132,29 @@ class RunController:
                     return
                 await self._run_topic(idx)
 
+        async def run_combined_for_model(model: str) -> None:
+            """One API call that asks for cards across all topics, then routes
+            results back to the per-(topic, model) TopicResult buckets."""
+            idxs = [i for i, tr in enumerate(self.run.topics) if tr.model == model]
+            if not idxs:
+                return
+            tag = f"combined · {model}" if len(models) > 1 else "combined"
+            await self._emit(Event(
+                type="log", topic=tag,
+                payload={"level": "info", "message": f"queued combined call · {len(idxs)} topics"},
+            ))
+            async with sem:
+                if self.cancel.is_set():
+                    for i in idxs:
+                        self.run.topics[i].status = "cancelled"
+                    return
+                await self._run_combined(idxs, model, tag)
+
         try:
-            await asyncio.gather(*(run_one(i) for i in range(len(self.run.topics))))
+            if self.request.combined_topics:
+                await asyncio.gather(*(run_combined_for_model(m) for m in models))
+            else:
+                await asyncio.gather(*(run_one(i) for i in range(len(self.run.topics))))
         finally:
             self.run.completed_at = datetime.utcnow()
             if self.cancel.is_set():
@@ -335,6 +356,142 @@ class RunController:
                     },
                 )
             )
+
+    async def _run_combined(self, idxs: list[int], model: str, tag: str) -> None:
+        """One API call covers all topics; we route returned cards by their topic field."""
+        provider_name = provider_for_model(model)
+        mode = self.request.mode
+        timeout_s = MODE_TIMEOUT_S[mode]
+        # Combined needs more headroom for output covering multiple topics.
+        max_tokens = max(MODE_MAX_TOKENS[mode], 2000) * max(1, min(len(idxs), 3))
+
+        topics = [self.run.topics[i].topic for i in idxs]
+        prompt = build_combined_prompt(topics, mode, self.request.sources)
+        web_search = mode != "instant"
+
+        for i in idxs:
+            self.run.topics[i].status = "running"
+        write_run_json(self.run)
+
+        await self._emit(Event(
+            type="topic_start", topic=tag,
+            payload={
+                "model": model, "web_search": web_search, "provider": provider_name,
+                "combined": True, "topic_count": len(idxs),
+            },
+        ))
+        await self._emit(Event(
+            type="log", topic=tag,
+            payload={
+                "level": "info",
+                "message": (
+                    f"▸ dispatching combined · {len(idxs)} topics · model={model} · "
+                    f"max_tokens={max_tokens} · timeout={int(timeout_s)}s"
+                ),
+            },
+        ))
+
+        provider = anthropic_provider if provider_name == "anthropic" else openrouter_provider
+        # Topic name → index lookup for routing. Case-insensitive fallback.
+        topic_to_idx: dict[str, int] = {topics[k].lower(): idxs[k] for k in range(len(idxs))}
+        per_topic_cards: dict[int, list[Card]] = {i: [] for i in idxs}
+        usage = TokenUsage()
+        start = time.monotonic()
+
+        try:
+            async for ev in provider.stream_research(
+                topic=tag, prompt=prompt, model=model, web_search=web_search,
+                max_tokens=max_tokens, timeout_s=timeout_s, cancel=self.cancel,
+            ):
+                if ev.type == "card":
+                    raw = ev.payload.get("card") or {}
+                    routed_topic_name = (raw.get("source_name") and "") or ""
+                    # The model is asked to put the topic verbatim in a "topic" field;
+                    # card_from_raw doesn't carry it through, so re-read the original.
+                    routed = None
+                    # The original `topic` field may be in the raw card payload from
+                    # the provider's text — we don't currently surface it, so fall back
+                    # to keyword match on the title + body.
+                    title_l = (raw.get("title") or "").lower()
+                    body_l = (raw.get("body") or "").lower()
+                    for t_name, t_idx in topic_to_idx.items():
+                        if t_name in title_l or t_name in body_l:
+                            routed = t_idx
+                            break
+                    if routed is None:
+                        # Last resort: distribute round-robin so we don't drop cards.
+                        all_idxs = list(idxs)
+                        routed = all_idxs[sum(len(per_topic_cards[i]) for i in all_idxs) % len(all_idxs)]
+                    card = Card.model_validate(raw)
+                    per_topic_cards[routed].append(card)
+                    # Emit a re-tagged card event so the right column updates.
+                    routed_tag = (
+                        f"{self.run.topics[routed].topic} · {model}"
+                        if len(self.models) > 1
+                        else self.run.topics[routed].topic
+                    )
+                    await self._emit(Event(
+                        type="card", topic=routed_tag,
+                        payload={"card": card.model_dump(mode="json")},
+                    ))
+                    continue
+                if ev.type == "usage":
+                    usage = TokenUsage(
+                        input=ev.payload.get("input_tokens", 0),
+                        output=ev.payload.get("output_tokens", 0),
+                    )
+                await self._emit(ev.model_copy(update={"topic": tag}))
+
+            # Apportion tokens evenly across the combined topics for accounting.
+            split_in = usage.input // max(1, len(idxs))
+            split_out = usage.output // max(1, len(idxs))
+            for i in idxs:
+                tr = self.run.topics[i]
+                tr.cards = per_topic_cards[i]
+                tr.tokens = TokenUsage(input=split_in, output=split_out)
+                tr.status = "completed"
+        except asyncio.CancelledError:
+            for i in idxs:
+                self.run.topics[i].status = "cancelled"
+            raise
+        except ProviderError as e:
+            for i in idxs:
+                self.run.topics[i].status = "failed"
+                self.run.topics[i].error = str(e)
+            await self._emit(Event(type="error", topic=tag, payload={"message": str(e)}))
+        except Exception as e:
+            err = f"{type(e).__name__}: {e}"
+            for i in idxs:
+                self.run.topics[i].status = "failed"
+                self.run.topics[i].error = err
+            await self._emit(Event(type="error", topic=tag, payload={"message": err}))
+        finally:
+            duration = time.monotonic() - start
+            for i in idxs:
+                tr = self.run.topics[i]
+                tr.duration_s = duration / max(1, len(idxs))
+                try:
+                    write_topic_md(self.run_id, tr)
+                except Exception:
+                    pass
+            write_run_json(self.run)
+            await self._emit(Event(
+                type="log", topic=tag,
+                payload={
+                    "level": "success",
+                    "message": f"◼ combined complete · {duration:.1f}s · {sum(len(per_topic_cards[i]) for i in idxs)} cards across {len(idxs)} topics",
+                },
+            ))
+            for i in idxs:
+                tr = self.run.topics[i]
+                tag_i = f"{tr.topic} · {model}" if len(self.models) > 1 else tr.topic
+                await self._emit(Event(
+                    type="topic_complete", topic=tag_i,
+                    payload={
+                        "status": tr.status, "duration_s": round(tr.duration_s, 2),
+                        "topic_name": tr.topic, "slug": tr.slug, "model": model,
+                    },
+                ))
 
     async def subscribe(self) -> AsyncIterator[Event]:
         """Replay history then stream new events until done."""

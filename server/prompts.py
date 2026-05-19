@@ -48,6 +48,59 @@ def _pinned_descriptions(pinned: list[Source]) -> list[str]:
     return out
 
 
+def build_combined_prompt(topics: list[str], mode: Mode, user_sources: list[Source]) -> str:
+    """One prompt that asks the model for items across ALL topics at once.
+
+    The response contract is: each item carries its own ``topic`` field with
+    the verbatim topic string from the input list, so the orchestrator can
+    route cards back to per-topic buckets.
+    """
+    today_str = datetime.utcnow().strftime("%a %b %d %Y")
+    topic_block = "\n".join(f"- {t}" for t in topics)
+    src_clause = (
+        f"Prefer these outlets: {_format_sources_for_prompt(user_sources)}.\n"
+        if user_sources else ""
+    )
+    if mode == "instant":
+        return (
+            f"You do NOT have web access. For each of the topics below, generate 2 important "
+            "themes from your training knowledge.\n\n"
+            f"Topics:\n{topic_block}\n\n"
+            'Return ONLY a JSON array. Each item: {"headline":"...","source":"Claude knowledge base",'
+            '"date":null,"summary":"1-2 sentences","url":null,"topic":"<verbatim from list>"}'
+        )
+    if mode == "fast":
+        return (
+            f"Today: {today_str}. For each of the topics below, find 1-2 important items from "
+            f"the past 7 days using AT MOST 1 web search PER TOPIC.\n\n"
+            f"Topics:\n{topic_block}\n\n"
+            f"{src_clause}"
+            'Return ONLY a JSON array. Each item: {"headline":"...","source":"...","date":"YYYY-MM-DD",'
+            '"summary":"1-2 sentences","url":"...","topic":"<verbatim from list>"}'
+        )
+    # thorough or deep — generous item budget, multi-search permitted.
+    count = "2-3" if mode == "thorough" else "3-5"
+    return (
+        f"Today is {today_str}. Search the web for the most important recent stories from the past "
+        f"7 days across MULTIPLE topics in ONE request.\n\n"
+        f"Topics:\n{topic_block}\n\n"
+        f"{src_clause}"
+        f"Return {count} substantive items PER TOPIC. Respond with ONLY a valid JSON array — no "
+        "markdown fences, no preamble. Each item must include a verbatim 'topic' field matching "
+        "one of the input topics:\n\n"
+        "[\n"
+        "  {\n"
+        '    "headline": "...",\n'
+        '    "source": "...",\n'
+        '    "date": "YYYY-MM-DD",\n'
+        '    "summary": "1-2 sentence summary",\n'
+        '    "url": "full URL",\n'
+        '    "topic": "<verbatim from list>"\n'
+        "  }\n"
+        "]"
+    )
+
+
 def build_prompt(topic: str, mode: Mode, user_sources: list[Source]) -> str:
     today_str = datetime.utcnow().strftime("%a %b %d %Y")
     user_src = _user_sources_for_topic(user_sources, topic)
