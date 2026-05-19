@@ -10,10 +10,11 @@ import asyncio
 import json
 from typing import Any
 
+import re
+
 import httpx
 
 from ..config import provider_for_model, settings
-from ..store import extract_json_array
 from .anthropic import ANTHROPIC_URL, ANTHROPIC_VERSION
 from .openrouter import OPENROUTER_URL
 
@@ -90,23 +91,22 @@ async def _openrouter_json_array(
 
 
 def _parse_array(text: str) -> tuple[list[Any], str | None]:
+    """Permissive JSON-array extractor.
+
+    Accepts arrays of strings OR objects (or a mix). Strips code fences and
+    grabs the substring between the first '[' and last ']'.
+    """
     if not text:
         return [], "Empty response from model"
-    items = extract_json_array(text)
-    if items is None:
-        # extract_json_array filters to dicts; widen to accept strings too.
-        try:
-            cleaned = text.strip().strip("`")
-            if cleaned.startswith("json"):
-                cleaned = cleaned[4:].strip()
-            start = cleaned.find("[")
-            end = cleaned.rfind("]")
-            if start == -1 or end == -1 or end <= start:
-                return [], "Response did not contain a JSON array"
-            parsed = json.loads(cleaned[start : end + 1])
-            if not isinstance(parsed, list):
-                return [], "Response was not a JSON array"
-            return parsed, None
-        except json.JSONDecodeError as e:
-            return [], f"JSON parse failed: {e}"
-    return items, None
+    cleaned = re.sub(r"```(?:json)?", "", text).strip()
+    start = cleaned.find("[")
+    end = cleaned.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return [], f"Response did not contain a JSON array (got {len(text)} chars)"
+    try:
+        parsed = json.loads(cleaned[start : end + 1])
+    except json.JSONDecodeError as e:
+        return [], f"JSON parse failed: {e}"
+    if not isinstance(parsed, list):
+        return [], "Response was not a JSON array"
+    return parsed, None
