@@ -220,6 +220,22 @@ a:hover { text-decoration: underline; }
   text-transform: uppercase;
   color: var(--ink-soft);
 }
+.masthead-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.new-search-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 4px 10px;
+}
+.new-search-btn:hover { background: var(--red); border-color: var(--red); color: var(--paper); }
 .masthead-title {
   text-align: center;
   padding: 28px 0 18px;
