@@ -66,6 +66,17 @@ export const useSettings = create<SettingsState>()(
       setConcurrency: (concurrency) => set({ concurrency }),
       setCombinedTopics: (combinedTopics) => set({ combinedTopics }),
       setAnalyzeCards: (analyzeCards) => set({ analyzeCards }),
+      resetWorkspace: () =>
+        set({
+          topics: [],
+          sources: [],
+          models: [],
+          modelOverride: null,
+          mode: "thorough",
+          concurrency: 3,
+          combinedTopics: false,
+          analyzeCards: true,
+        }),
     }),
     { name: "cc-research.settings" }
   )
