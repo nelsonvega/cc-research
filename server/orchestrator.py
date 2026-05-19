@@ -405,13 +405,10 @@ class RunController:
             ):
                 if ev.type == "card":
                     raw = ev.payload.get("card") or {}
-                    routed_topic_name = (raw.get("source_name") and "") or ""
-                    # The model is asked to put the topic verbatim in a "topic" field;
-                    # card_from_raw doesn't carry it through, so re-read the original.
+                    # The combined prompt asks the model to put the topic verbatim
+                    # in a "topic" field on each item, but card_from_raw drops
+                    # unknown keys. We fall back to keyword match on title + body.
                     routed = None
-                    # The original `topic` field may be in the raw card payload from
-                    # the provider's text — we don't currently surface it, so fall back
-                    # to keyword match on the title + body.
                     title_l = (raw.get("title") or "").lower()
                     body_l = (raw.get("body") or "").lower()
                     for t_name, t_idx in topic_to_idx.items():

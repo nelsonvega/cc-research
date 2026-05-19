@@ -29,6 +29,7 @@ type SettingsState = {
   setConcurrency: (n: number) => void;
   setCombinedTopics: (v: boolean) => void;
   setAnalyzeCards: (v: boolean) => void;
+  resetWorkspace: () => void;
 };
 
 export const useSettings = create<SettingsState>()(
