@@ -685,6 +685,23 @@ a:hover { text-decoration: underline; }
 }
 .banner.danger { color: var(--paper); background: var(--red); box-shadow: 4px 4px 0 var(--ink); }
 .banner.info { color: var(--ink); }
+.banner-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+.banner-error strong { font-family: var(--display); letter-spacing: 0; }
+.banner-error .mini {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+  flex: none;
+}
+.banner-error .mini:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
 /* Transmission log — pinned to bottom of viewport via the grid's bottom row */
 .log-panel {
