@@ -34,6 +34,18 @@ export function App() {
   const tick = useLiveRun((s) => s.tickElapsed);
   const lastError = useLiveRun((s) => s.lastError);
   const dismissError = useLiveRun((s) => s.dismissError);
+  const clearLive = useLiveRun((s) => s.clear);
+  const resetWorkspace = useSettings((s) => s.resetWorkspace);
+  const clearViewedRun = useRuns((s) => s.clearView);
+  const clearResultFilter = useUi((s) => s.setResultFilter);
+
+  const startNewSearch = () => {
+    if (!confirm("Clear topics, sources, model selection, and visible results?")) return;
+    resetWorkspace();
+    clearLive();
+    clearViewedRun();
+    clearResultFilter("");
+  };
   const longDate = useLongDate();
 
   useEffect(() => {
@@ -72,14 +84,21 @@ export function App() {
               <div className="masthead-rule-top">
                 <span>{longDate}</span>
                 <span className="hide-sm">No. 001 · Personal Edition</span>
-                <span>
+                <span className="masthead-right">
+                  <button
+                    className="mini new-search-btn"
+                    onClick={startNewSearch}
+                    title="Clear topics, sources, models, and current results"
+                  >
+                    + New search
+                  </button>
                   {status === "running" ? (
-                    <>
+                    <span>
                       <span className="live-dot" style={{ marginRight: 6 }} />
                       LIVE · {elapsedStr}s
-                    </>
+                    </span>
                   ) : (
-                    "Vol. I"
+                    <span>Vol. I</span>
                   )}
                 </span>
               </div>
