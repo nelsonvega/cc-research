@@ -66,7 +66,7 @@ export function TopicEditor() {
   };
 
   return (
-    <section>
+    <section style={{ width: "100%" }}>
       <div className="label-row">
         <span className="label">▸ Topics ({topics.length})</span>
         <span className="label-hint">what to watch</span>

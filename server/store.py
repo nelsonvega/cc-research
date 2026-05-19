@@ -11,7 +11,7 @@ import yaml
 from slugify import slugify
 
 from .config import settings
-from .models import Card, Run, RunSummary, TopicResult
+from .models import Card, Run, RunSummary, TopicResult, TopicSummary
 
 
 def make_run_id(topics: list[str]) -> str:
@@ -159,6 +159,15 @@ def list_runs() -> list[RunSummary]:
                 topic_count=len(run.topics),
                 card_count=sum(len(t.cards) for t in run.topics),
                 topics=[t.topic for t in run.topics],
+                topic_details=[
+                    TopicSummary(
+                        topic=t.topic,
+                        slug=t.slug,
+                        status=t.status,
+                        card_count=len(t.cards),
+                    )
+                    for t in run.topics
+                ],
             )
         )
     return out

@@ -201,7 +201,11 @@ a:hover { text-decoration: underline; }
 .main-inner { max-width: 1100px; margin: 0 auto; }
 
 /* Masthead */
-.masthead { margin-bottom: 40px; }
+.masthead { margin-bottom: 20px; }
+.masthead--compact { margin-bottom: 14px; }
+.masthead--compact .masthead-title { padding: 12px 0 8px; }
+.masthead--compact .masthead-title h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+.masthead-title--compact .masthead-tagline { display: none; }
 .masthead-rule-top {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px;
@@ -254,6 +258,63 @@ a:hover { text-decoration: underline; }
 }
 .control-row { margin-bottom: 22px; }
 .control-row:last-child { margin-bottom: 0; }
+
+/* Top controls bar */
+.controls-bar {
+  background: var(--paper-dark);
+  border: 1px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.controls-row {
+  display: grid;
+  gap: 14px;
+  align-items: end;
+}
+.controls-row--top {
+  grid-template-columns: 1.4fr 1fr 1.6fr;
+}
+.controls-row--bottom {
+  grid-template-columns: 1fr auto;
+}
+.controls-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.controls-cell .label { margin: 0; }
+.controls-cell--topics > section,
+.controls-cell--filter > * { margin: 0; }
+.controls-cell--run { align-self: stretch; }
+.controls-cell--run section { width: 220px; }
+@media (max-width: 880px) {
+  .controls-row--top { grid-template-columns: 1fr; }
+  .controls-row--bottom { grid-template-columns: 1fr; }
+  .controls-cell--run section { width: 100%; }
+}
+
+/* Result filter */
+.result-filter {
+  position: relative;
+  display: flex;
+}
+.result-filter input {
+  flex: 1;
+  padding-right: 30px;
+}
+.result-filter-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  padding: 0 8px;
+  box-shadow: none;
+  border-radius: 0;
+}
+.result-filter-clear:hover { color: var(--red); background: transparent; }
 
 /* Chips */
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -413,6 +474,88 @@ a:hover { text-decoration: underline; }
 .status-pill.completed { color: var(--ink); }
 .status-pill.failed { color: var(--red); background: var(--red); color: var(--paper); border-color: var(--red); }
 .status-pill.cancelled { color: var(--ink-soft); }
+
+/* Topic History (per-topic file list in left sidebar) */
+.topic-history-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  overflow-y: auto;
+  gap: 4px;
+}
+.topic-history-empty {
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+.topic-history-empty code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--paper);
+  padding: 1px 4px;
+}
+.topic-history-item {
+  cursor: pointer;
+  padding: 10px 10px 8px;
+  border-left: 3px solid transparent;
+  border-bottom: 1px dashed var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.12s;
+}
+.topic-history-item:hover { background: var(--paper); }
+.topic-history-item.viewing {
+  background: var(--ink);
+  color: var(--paper);
+  border-left-color: var(--red);
+}
+.topic-history-item.viewing .topic-history-meta,
+.topic-history-item.viewing .topic-history-file,
+.topic-history-item.viewing .file-label,
+.topic-history-item.viewing .file-path { color: var(--paper); opacity: 0.85; }
+.topic-history-row1 {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.topic-history-name {
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.topic-history-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.topic-history-file {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.file-label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+.file-path {
+  word-break: break-all;
+}
+.topic-history-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ink-soft);
+}
 
 /* Archive (past runs sidebar) */
 .archive-list { display: flex; flex-direction: column; max-height: 280px; overflow-y: auto; }

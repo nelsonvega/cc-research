@@ -51,6 +51,13 @@ export type Run = {
   topics: TopicResult[];
 };
 
+export type TopicSummary = {
+  topic: string;
+  slug: string;
+  status: TopicStatus;
+  card_count: number;
+};
+
 export type RunSummary = {
   run_id: string;
   created_at: string;
@@ -60,6 +67,7 @@ export type RunSummary = {
   topic_count: number;
   card_count: number;
   topics: string[];
+  topic_details: TopicSummary[];
 };
 
 export type ModelInfo = {

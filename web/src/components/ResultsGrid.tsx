@@ -1,5 +1,6 @@
 import { useLiveRun } from "../state/liveRun";
 import { useRuns } from "../state/runs";
+import { useUi } from "../state/ui";
 import { Card } from "./Card";
 import type { Card as CardT, TopicResult, TopicStatus } from "../types";
 
@@ -14,9 +15,20 @@ type Section = {
   error: string | null;
 };
 
+function matchesFilter(card: CardT, q: string): boolean {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  return (
+    card.title.toLowerCase().includes(needle) ||
+    card.body.toLowerCase().includes(needle) ||
+    (card.source_name?.toLowerCase().includes(needle) ?? false)
+  );
+}
+
 export function ResultsGrid() {
   const live = useLiveRun();
   const viewing = useRuns((s) => s.viewing);
+  const filter = useUi((s) => s.resultFilter);
 
   // Live run takes precedence; otherwise show the viewed historical run.
   const sections: Section[] = live.runId
@@ -58,43 +70,53 @@ export function ResultsGrid() {
 
   return (
     <>
-      {sections.map((s) => (
-        <section key={s.topic} className="topic-section">
-          <div className="topic-header">
-            <h2>{s.topic}</h2>
-            <span className={`status-pill ${s.status}`}>{s.status}</span>
-            <span className="topic-meta">
-              {s.model ?? "—"}
-              {s.cards.length > 0 && ` · ${s.cards.length} cards`}
-              {s.durationS > 0 && ` · ${s.durationS.toFixed(1)}s`}
-              {(s.inputTokens > 0 || s.outputTokens > 0) &&
-                ` · ${s.inputTokens}/${s.outputTokens} tok`}
-            </span>
-          </div>
-
-          {s.error && <div className="banner danger">{s.error}</div>}
-
-          {s.cards.length === 0 && s.status === "running" && (
-            <div
-              className="empty-state"
-              style={{ padding: "30px 20px", fontSize: 14 }}
-            >
-              <p>
-                <span className="live-dot" style={{ marginRight: 6 }} />
-                Filing copy…
-              </p>
+      {sections.map((s) => {
+        const visibleCards = s.cards.filter((c) => matchesFilter(c, filter));
+        const hiddenByFilter = filter ? s.cards.length - visibleCards.length : 0;
+        return (
+          <section key={s.topic} className="topic-section">
+            <div className="topic-header">
+              <h2>{s.topic}</h2>
+              <span className={`status-pill ${s.status}`}>{s.status}</span>
+              <span className="topic-meta">
+                {s.model ?? "—"}
+                {s.cards.length > 0 && ` · ${visibleCards.length}/${s.cards.length} cards`}
+                {s.durationS > 0 && ` · ${s.durationS.toFixed(1)}s`}
+                {(s.inputTokens > 0 || s.outputTokens > 0) &&
+                  ` · ${s.inputTokens}/${s.outputTokens} tok`}
+              </span>
             </div>
-          )}
 
-          {s.cards.length > 0 && (
-            <div className="results-grid">
-              {s.cards.map((card, i) => (
-                <Card key={`${card.title}-${i}`} card={card} topic={s.topic} />
-              ))}
-            </div>
-          )}
-        </section>
-      ))}
+            {s.error && <div className="banner danger">{s.error}</div>}
+
+            {s.cards.length === 0 && s.status === "running" && (
+              <div
+                className="empty-state"
+                style={{ padding: "30px 20px", fontSize: 14 }}
+              >
+                <p>
+                  <span className="live-dot" style={{ marginRight: 6 }} />
+                  Filing copy…
+                </p>
+              </div>
+            )}
+
+            {visibleCards.length > 0 && (
+              <div className="results-grid">
+                {visibleCards.map((card, i) => (
+                  <Card key={`${card.title}-${i}`} card={card} topic={s.topic} />
+                ))}
+              </div>
+            )}
+
+            {filter && visibleCards.length === 0 && s.cards.length > 0 && (
+              <div className="empty-state" style={{ padding: "20px", fontSize: 13 }}>
+                No cards in this topic match "{filter}" ({hiddenByFilter} hidden)
+              </div>
+            )}
+          </section>
+        );
+      })}
     </>
   );
 }

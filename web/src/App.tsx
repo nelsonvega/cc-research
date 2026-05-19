@@ -1,12 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { ModePicker } from "./components/ModePicker";
-import { ModelPicker } from "./components/ModelPicker";
-import { TopicEditor } from "./components/TopicEditor";
+import { ControlsBar } from "./components/ControlsBar";
 import { SourceEditor } from "./components/SourceEditor";
 import { Settings } from "./components/Settings";
-import { RunButton } from "./components/RunButton";
 import { ResultsGrid } from "./components/ResultsGrid";
-import { RunsList } from "./components/RunsList";
+import { TopicHistory } from "./components/TopicHistory";
 import { TransmissionLog } from "./components/TransmissionLog";
 import { useModels } from "./state/models";
 import { useLiveRun } from "./state/liveRun";
@@ -59,30 +56,14 @@ export function App() {
             <h2>Workshop</h2>
             <span className="label-hint">cc-research</span>
           </div>
-
-          <section>
-            <div className="label-row">
-              <span className="label">▸ Mode</span>
-              <span className="label-hint">depth · cost</span>
-            </div>
-            <ModePicker />
-          </section>
-
-          <section>
-            <ModelPicker />
-          </section>
-
-          <RunButton />
-
-          <TopicEditor />
+          <TopicHistory />
           <SourceEditor />
           <Settings />
-          <RunsList />
         </aside>
 
         <main className="main">
           <div className="main-inner">
-            <header className="masthead">
+            <header className="masthead masthead--compact">
               <div className="masthead-rule-top">
                 <span>{longDate}</span>
                 <span className="hide-sm">No. 001 · Personal Edition</span>
@@ -97,11 +78,8 @@ export function App() {
                   )}
                 </span>
               </div>
-              <div className="masthead-title">
+              <div className="masthead-title masthead-title--compact">
                 <h1>The Dispatch</h1>
-                <div className="masthead-tagline">
-                  — a personal news terminal, curated on demand —
-                </div>
               </div>
               <div className="masthead-rule-bottom">
                 <span>Topics</span>
@@ -111,6 +89,8 @@ export function App() {
                 <span>This Week</span>
               </div>
             </header>
+
+            <ControlsBar />
 
             {modelsErr && (
               <div className="banner danger">Models endpoint failed: {modelsErr}</div>

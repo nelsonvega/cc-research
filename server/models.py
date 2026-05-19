@@ -57,6 +57,14 @@ class Run(BaseModel):
     topics: list[TopicResult] = Field(default_factory=list)
 
 
+class TopicSummary(BaseModel):
+    """One row per topic-file, used in topic-history sidebar."""
+    topic: str
+    slug: str
+    status: TopicStatus
+    card_count: int
+
+
 class RunSummary(BaseModel):
     """Trimmed Run for the runs list view."""
     run_id: str
@@ -67,6 +75,7 @@ class RunSummary(BaseModel):
     topic_count: int
     card_count: int
     topics: list[str] = Field(default_factory=list)
+    topic_details: list[TopicSummary] = Field(default_factory=list)
 
 
 EventType = Literal[
