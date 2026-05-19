@@ -8,3 +8,15 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Env files
+.env
+.env.local
+
+# Node / frontend
+web/node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+
+# Run data (user content, not source)
+data/runs/

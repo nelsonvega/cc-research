@@ -1,0 +1,38 @@
+# VCS / IDE
+.git
+.gitignore
+.notebook
+.python-version
+
+# Python env / caches
+.venv
+__pycache__
+*.py[oc]
+*.egg-info
+build
+dist
+wheels
+
+# Frontend artifacts (rebuilt inside the image)
+web/node_modules
+web/dist
+
+# Local config / user data — must NOT ship in the image
+.env
+.env.*
+data
+
+# Tests + docs not needed at runtime
+tests
+docs
+
+# Original artifact source (kept in repo for reference, not in image)
+news-dashboard.jsx
+
+# Misc
+README.md
+*.md
+.dockerignore
+Dockerfile
+docker-compose.yml
+run.sh
