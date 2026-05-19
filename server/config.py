@@ -47,18 +47,10 @@ MODE_TIMEOUT_S: dict[str, float] = {
 }
 
 
-SUPPORTED_MODELS: list[dict] = [
-    # Anthropic
+ANTHROPIC_STATIC_MODELS: list[dict] = [
     {"id": "claude-opus-4-7", "label": "Claude Opus 4.7", "provider": "anthropic", "supports_web_search": True},
     {"id": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6", "provider": "anthropic", "supports_web_search": True},
     {"id": "claude-haiku-4-5", "label": "Claude Haiku 4.5", "provider": "anthropic", "supports_web_search": True},
-    # OpenRouter (a small curated list; user can type any model id in the override box)
-    {"id": "openai/gpt-5", "label": "GPT-5 (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
-    {"id": "openai/gpt-5-mini", "label": "GPT-5 mini (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
-    {"id": "google/gemini-2.5-pro", "label": "Gemini 2.5 Pro (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
-    {"id": "google/gemini-2.5-flash", "label": "Gemini 2.5 Flash (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
-    {"id": "meta-llama/llama-3.3-70b-instruct", "label": "Llama 3.3 70B (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
-    {"id": "x-ai/grok-4", "label": "Grok 4 (OpenRouter)", "provider": "openrouter", "supports_web_search": True},
 ]
 
 

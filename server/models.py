@@ -93,3 +93,7 @@ class ModelInfo(BaseModel):
     label: str
     provider: Literal["anthropic", "openrouter"]
     supports_web_search: bool
+    context_length: int | None = None
+    prompt_price: float | None = None       # USD per 1M input tokens
+    completion_price: float | None = None   # USD per 1M output tokens
+    description: str | None = None

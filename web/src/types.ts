@@ -67,12 +67,17 @@ export type ModelInfo = {
   label: string;
   provider: "anthropic" | "openrouter";
   supports_web_search: boolean;
+  context_length?: number | null;
+  prompt_price?: number | null;       // $ per 1M input tokens
+  completion_price?: number | null;   // $ per 1M output tokens
+  description?: string | null;
 };
 
 export type ModelsResponse = {
   models: ModelInfo[];
   mode_defaults: Record<Mode, string>;
   providers_configured: { anthropic: boolean; openrouter: boolean };
+  openrouter_catalog_error?: string | null;
 };
 
 export type SseEventType =
