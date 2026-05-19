@@ -52,6 +52,10 @@ export const api = {
       await fetch(`/api/runs/${encodeURIComponent(runId)}`, { method: "DELETE" })
     );
   },
+
+  exportUrl(runId: string): string {
+    return `/api/runs/${encodeURIComponent(runId)}/export.md`;
+  },
 };
 
 /**

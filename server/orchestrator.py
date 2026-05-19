@@ -52,25 +52,41 @@ class RunController:
 
     async def _run_all(self) -> None:
         sem = asyncio.Semaphore(self.request.concurrency)
-        await self._emit(
-            Event(
-                type="log",
-                payload={
-                    "level": "info",
-                    "message": f"Run started · {len(self.request.topics)} topics · mode={self.request.mode} · concurrency={self.request.concurrency}",
-                },
-            )
-        )
+        topics = self.request.topics
+        await self._emit(Event(
+            type="log",
+            payload={
+                "level": "info",
+                "message": (
+                    f"▶ run {self.run_id} · {len(topics)} topic"
+                    f"{'s' if len(topics) != 1 else ''} · mode={self.request.mode}"
+                    f" · concurrency={self.request.concurrency}"
+                ),
+            },
+        ))
+        await self._emit(Event(
+            type="log",
+            payload={"level": "info", "message": f"  topics: {' · '.join(topics)}"},
+        ))
 
         async def run_one(idx: int) -> None:
+            topic = self.run.topics[idx].topic
+            await self._emit(Event(
+                type="log", topic=topic,
+                payload={"level": "info", "message": "queued · waiting for slot"},
+            ))
             async with sem:
                 if self.cancel.is_set():
                     self.run.topics[idx].status = "cancelled"
+                    await self._emit(Event(
+                        type="log", topic=topic,
+                        payload={"level": "warn", "message": "cancelled before dispatch"},
+                    ))
                     return
                 await self._run_topic(idx)
 
         try:
-            await asyncio.gather(*(run_one(i) for i in range(len(self.request.topics))))
+            await asyncio.gather(*(run_one(i) for i in range(len(topics))))
         finally:
             self.run.completed_at = datetime.utcnow()
             if self.cancel.is_set():
@@ -89,7 +105,25 @@ class RunController:
                 await self._emit(
                     Event(type="log", payload={"level": "error", "message": f"index.md write failed: {e}"})
                 )
+
+            # Summary log line: totals across topics.
+            total_cards = sum(len(t.cards) for t in self.run.topics)
+            total_in = sum(t.tokens.input for t in self.run.topics)
+            total_out = sum(t.tokens.output for t in self.run.topics)
+            completed = sum(1 for t in self.run.topics if t.status == "completed")
+            failed = sum(1 for t in self.run.topics if t.status == "failed")
             duration = (self.run.completed_at - self.run.created_at).total_seconds()
+            await self._emit(Event(
+                type="log",
+                payload={
+                    "level": "success" if self.run.status == "completed" else "warn",
+                    "message": (
+                        f"■ run {self.run.status} · {duration:.1f}s · "
+                        f"{completed} ok / {failed} failed · "
+                        f"{total_cards} cards · {total_in}/{total_out} tok"
+                    ),
+                },
+            ))
             await self._emit(
                 Event(type="done", payload={"status": self.run.status, "duration_s": round(duration, 2)})
             )
@@ -116,6 +150,17 @@ class RunController:
                 payload={"model": model, "web_search": web_search, "provider": provider_name},
             )
         )
+        await self._emit(Event(
+            type="log", topic=topic,
+            payload={
+                "level": "info",
+                "message": (
+                    f"▸ dispatching · provider={provider_name} · model={model}"
+                    f" · web_search={'on' if web_search else 'off'}"
+                    f" · max_tokens={max_tokens} · timeout={int(timeout_s)}s"
+                ),
+            },
+        ))
 
         provider = anthropic_provider if provider_name == "anthropic" else openrouter_provider
         start = time.monotonic()
@@ -167,6 +212,24 @@ class RunController:
                     )
                 )
             write_run_json(self.run)
+            level = {
+                "completed": "success",
+                "failed": "error",
+                "cancelled": "warn",
+            }.get(topic_result.status, "info")
+            await self._emit(Event(
+                type="log", topic=topic,
+                payload={
+                    "level": level,
+                    "message": (
+                        f"◼ {topic_result.status} · {topic_result.duration_s:.1f}s · "
+                        f"{len(topic_result.cards)} card"
+                        f"{'s' if len(topic_result.cards) != 1 else ''}"
+                        f" · {topic_result.tokens.input}/{topic_result.tokens.output} tok"
+                        f" · saved to {topic_result.slug}.md"
+                    ),
+                },
+            ))
             await self._emit(
                 Event(
                     type="topic_complete",

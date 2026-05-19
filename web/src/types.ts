@@ -59,6 +59,7 @@ export type RunSummary = {
   mode: Mode;
   topic_count: number;
   card_count: number;
+  topics: string[];
 };
 
 export type ModelInfo = {

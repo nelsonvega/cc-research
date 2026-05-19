@@ -51,22 +51,22 @@ export function RunButton() {
   };
 
   return (
-    <div className="col">
-      {error && <div className="banner">{error}</div>}
+    <section>
+      {error && <div className="banner danger">{error}</div>}
       {isRunning ? (
-        <button className="run-button danger" onClick={cancel}>
-          Cancel run
+        <button className="run-button solid danger" onClick={cancel}>
+          ◼ Cancel run
         </button>
       ) : (
         <button
-          className="run-button primary"
+          className="run-button solid"
           onClick={start}
           disabled={!canRun}
           title={settings.topics.length === 0 ? "Add at least one topic" : undefined}
         >
-          {busy ? "Starting…" : `Run · ${settings.topics.length} topics`}
+          {busy ? "Filing…" : `▶ File ${settings.topics.length} topic${settings.topics.length === 1 ? "" : "s"}`}
         </button>
       )}
-    </div>
+    </section>
   );
 }

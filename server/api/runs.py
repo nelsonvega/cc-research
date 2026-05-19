@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from ..config import MODE_DEFAULTS, provider_for_model, settings
 from ..models import Run, RunRequest, RunSummary
 from ..orchestrator import registry
-from ..store import delete_run, list_runs, load_run
+from ..store import delete_run, list_runs, load_run, run_dir
 
 router = APIRouter()
 
@@ -39,6 +40,34 @@ def get_run(run_id: str) -> Run:
     if run is None:
         raise HTTPException(404, "Run not found")
     return run
+
+
+@router.get("/api/runs/{run_id}/export.md")
+def export_run_markdown(run_id: str) -> PlainTextResponse:
+    """Single concatenated markdown document for a finished run.
+
+    Combines the run's index.md and every <topic>.md into one file that
+    can be downloaded and read standalone.
+    """
+    run = load_run(run_id)
+    if run is None:
+        raise HTTPException(404, "Run not found")
+    d = run_dir(run_id)
+    parts: list[str] = []
+    index = d / "index.md"
+    if index.exists():
+        parts.append(index.read_text(encoding="utf-8").rstrip())
+    for t in run.topics:
+        topic_md = d / f"{t.slug}.md"
+        if topic_md.exists():
+            parts.append("\n\n---\n")
+            parts.append(topic_md.read_text(encoding="utf-8").rstrip())
+    body = "\n".join(parts) + "\n"
+    return PlainTextResponse(
+        content=body,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{run_id}.md"'},
+    )
 
 
 @router.delete("/api/runs/{run_id}")

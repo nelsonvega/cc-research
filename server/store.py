@@ -158,6 +158,7 @@ def list_runs() -> list[RunSummary]:
                 mode=run.mode,
                 topic_count=len(run.topics),
                 card_count=sum(len(t.cards) for t in run.topics),
+                topics=[t.topic for t in run.topics],
             )
         )
     return out

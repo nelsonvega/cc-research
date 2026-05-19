@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import time
 from typing import AsyncIterator
 
 import httpx
@@ -53,6 +54,11 @@ async def stream_research(
         "anthropic-version": ANTHROPIC_VERSION,
     }
 
+    yield Event(
+        type="log", topic=topic,
+        payload={"level": "info", "message": f"prompt built · {len(prompt)} chars"},
+    )
+
     timeout = httpx.Timeout(timeout_s, connect=10.0, read=timeout_s, write=timeout_s)
     async with httpx.AsyncClient(timeout=timeout) as client:
         attempts = 0
@@ -61,6 +67,18 @@ async def stream_research(
             if cancel.is_set():
                 raise asyncio.CancelledError
             try:
+                yield Event(
+                    type="log", topic=topic,
+                    payload={
+                        "level": "info",
+                        "message": (
+                            f"POST /v1/messages · model={model} · max_tokens={max_tokens}"
+                            f" · web_search={'on' if web_search else 'off'}"
+                            f" · timeout={int(timeout_s)}s · attempt {attempts}"
+                        ),
+                    },
+                )
+                req_start = time.monotonic()
                 async with client.stream("POST", ANTHROPIC_URL, json=body, headers=headers) as resp:
                     if resp.status_code == 429 and attempts < 2:
                         retry_after = resp.headers.get("Retry-After")
@@ -78,6 +96,15 @@ async def stream_research(
                         raise ProviderError(
                             f"Anthropic HTTP {resp.status_code}: {text.decode('utf-8', 'replace')[:300]}"
                         )
+
+                    elapsed = time.monotonic() - req_start
+                    yield Event(
+                        type="log", topic=topic,
+                        payload={
+                            "level": "success",
+                            "message": f"response {resp.status_code} · first byte in {elapsed:.2f}s · streaming…",
+                        },
+                    )
 
                     async for event in _parse_sse(resp, topic, cancel):
                         yield event
@@ -109,6 +136,10 @@ async def _parse_sse(
     text_buf = ""
     seen_titles: set[str] = set()
     sse_buf = ""
+    # Track tool_use blocks by content block index so we can accumulate
+    # partial JSON deltas and surface the search query once it's complete.
+    tool_blocks: dict[int, dict] = {}
+    search_count = 0
 
     async for chunk in resp.aiter_text():
         if cancel.is_set():
@@ -128,16 +159,15 @@ async def _parse_sse(
                 continue
 
             etype = ev.get("type")
+            block_idx = ev.get("index")
 
             if etype == "content_block_start":
                 block = ev.get("content_block") or {}
                 if block.get("type") == "tool_use" and block.get("name") == "web_search":
-                    # The query arrives in input_json deltas later — but for the
-                    # log it's enough to mark the tool call.
+                    tool_blocks[block_idx] = {"input_json": "", "logged": False}
                     yield Event(
-                        type="tool_use",
-                        topic=topic,
-                        payload={"tool": "web_search", "query": ""},
+                        type="log", topic=topic,
+                        payload={"level": "info", "message": "🔎 web_search · sending query…"},
                     )
 
             elif etype == "content_block_delta":
@@ -145,21 +175,70 @@ async def _parse_sse(
                 dtype = delta.get("type")
                 if dtype == "text_delta":
                     text_buf += delta.get("text", "")
-                    # Try to extract any newly-complete cards from the buffer.
                     items = extract_json_array(text_buf) or []
                     for raw in items:
                         card = card_from_raw(raw)
                         if not card or card.title in seen_titles:
                             continue
                         seen_titles.add(card.title)
+                        title_preview = card.title[:70] + ("…" if len(card.title) > 70 else "")
+                        yield Event(
+                            type="log", topic=topic,
+                            payload={"level": "success", "message": f"+card · “{title_preview}”"},
+                        )
                         yield Event(
                             type="card",
                             topic=topic,
                             payload={"card": card.model_dump(mode="json")},
                         )
                 elif dtype == "input_json_delta":
-                    # Tool input streaming; we don't emit per-chunk events.
-                    pass
+                    # Accumulate partial JSON for the tool call; once parseable,
+                    # log the actual search query.
+                    blk = tool_blocks.get(block_idx)
+                    if blk is not None:
+                        blk["input_json"] += delta.get("partial_json", "")
+                        if not blk["logged"]:
+                            try:
+                                parsed = json.loads(blk["input_json"])
+                            except json.JSONDecodeError:
+                                parsed = None
+                            if isinstance(parsed, dict) and parsed.get("query"):
+                                search_count += 1
+                                query = str(parsed["query"])
+                                blk["logged"] = True
+                                yield Event(
+                                    type="tool_use", topic=topic,
+                                    payload={"tool": "web_search", "query": query, "n": search_count},
+                                )
+                                yield Event(
+                                    type="log", topic=topic,
+                                    payload={
+                                        "level": "info",
+                                        "message": f"🔎 search #{search_count} · “{query}”",
+                                    },
+                                )
+
+            elif etype == "content_block_stop":
+                # If the tool block ended without us seeing a parseable query,
+                # try one more time and log whatever was sent.
+                blk = tool_blocks.get(block_idx)
+                if blk is not None and not blk["logged"]:
+                    try:
+                        parsed = json.loads(blk["input_json"]) if blk["input_json"] else None
+                    except json.JSONDecodeError:
+                        parsed = None
+                    if isinstance(parsed, dict) and parsed.get("query"):
+                        search_count += 1
+                        query = str(parsed["query"])
+                        blk["logged"] = True
+                        yield Event(
+                            type="tool_use", topic=topic,
+                            payload={"tool": "web_search", "query": query, "n": search_count},
+                        )
+                        yield Event(
+                            type="log", topic=topic,
+                            payload={"level": "info", "message": f"🔎 search #{search_count} · “{query}”"},
+                        )
 
             elif etype == "message_delta":
                 usage = (ev.get("usage") or {})

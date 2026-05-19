@@ -66,6 +66,7 @@ class RunSummary(BaseModel):
     mode: Mode
     topic_count: int
     card_count: int
+    topics: list[str] = Field(default_factory=list)
 
 
 EventType = Literal[

@@ -1,19 +1,30 @@
 import { useEffect } from "react";
+import { api } from "../api";
 import { useRuns } from "../state/runs";
 import { useLiveRun } from "../state/liveRun";
 
 function shortWhen(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return d
+    .toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })
+    .toUpperCase();
+}
+
+function topicsPreview(topics: string[]): string {
+  if (topics.length === 0) return "(no topics)";
+  const head = topics.slice(0, 3).join(" · ");
+  const more = topics.length > 3 ? ` +${topics.length - 3} more` : "";
+  return head + more;
 }
 
 export function RunsList() {
   const runs = useRuns((s) => s.runs);
+  const viewing = useRuns((s) => s.viewing);
   const refresh = useRuns((s) => s.refresh);
   const view = useRuns((s) => s.view);
   const remove = useRuns((s) => s.remove);
@@ -24,40 +35,69 @@ export function RunsList() {
   }, [refresh]);
 
   return (
-    <section className="section col">
-      <h2>Past runs</h2>
+    <section>
+      <div className="label-row">
+        <span className="label">▸ Archive ({runs.length})</span>
+        <span className="label-hint">past editions</span>
+      </div>
       {runs.length === 0 && (
-        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>
-          No runs yet.
+        <p
+          style={{
+            fontStyle: "italic",
+            color: "var(--ink-soft)",
+            fontSize: 13,
+            margin: 0,
+          }}
+        >
+          No past editions yet.
+          <br />
+          File your first to begin the archive.
         </p>
       )}
-      <div className="runs-list">
-        {runs.map((r) => (
-          <div
-            key={r.run_id}
-            className="run-item"
-            onClick={() => {
-              clearLive();
-              view(r.run_id);
-            }}
-          >
-            <span className="when">{shortWhen(r.created_at)}</span>
-            <span className="meta">
-              {r.mode} · {r.topic_count}t · {r.card_count}c
-            </span>
-            <span className={`status-pill ${r.status}`}>{r.status}</span>
-            <button
-              className="delete"
-              title="Delete"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm("Delete this run?")) remove(r.run_id);
+      <div className="archive-list">
+        {runs.map((r) => {
+          const isViewing = viewing?.run_id === r.run_id;
+          return (
+            <div
+              key={r.run_id}
+              className={`archive-item ${isViewing ? "viewing" : ""}`}
+              onClick={() => {
+                clearLive();
+                view(r.run_id);
               }}
             >
-              ×
-            </button>
-          </div>
-        ))}
+              <div className="archive-when">
+                <span>{shortWhen(r.created_at)}</span>
+                <span className="archive-actions">
+                  <a
+                    href={api.exportUrl(r.run_id)}
+                    title="Export as markdown"
+                    onClick={(e) => e.stopPropagation()}
+                    download
+                  >
+                    ⬇
+                  </a>
+                  <button
+                    className="delete"
+                    title="Delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Delete this edition?")) remove(r.run_id);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </span>
+              </div>
+              <div className="archive-title" title={r.topics.join(", ")}>
+                {topicsPreview(r.topics)}
+              </div>
+              <div className="archive-meta">
+                {r.mode} · {r.card_count} cards · {r.status}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

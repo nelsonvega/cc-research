@@ -9,24 +9,29 @@ export function ModelPicker() {
 
   if (!data) return null;
   const defaultId = data.mode_defaults[mode];
-  const defaultLabel = data.models.find((m) => m.id === defaultId)?.label ?? defaultId;
+  const defaultLabel =
+    data.models.find((m) => m.id === defaultId)?.label ?? defaultId;
 
   return (
-    <label className="col" style={{ gap: 4 }}>
-      <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Model</span>
+    <div>
+      <div className="label-row">
+        <span className="label">▸ Model</span>
+        <span className="label-hint">{mode} default</span>
+      </div>
       <select
         value={modelOverride ?? ""}
         onChange={(e) =>
           setModelOverride(e.target.value === "" ? null : e.target.value)
         }
+        style={{ width: "100%" }}
       >
-        <option value="">Default for {mode} mode · {defaultLabel}</option>
+        <option value="">Use default · {defaultLabel}</option>
         {data.models.map((m) => (
           <option key={m.id} value={m.id}>
             {m.label}
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }

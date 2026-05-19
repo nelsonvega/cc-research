@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import time
 from typing import AsyncIterator
 
 import httpx
@@ -51,6 +52,11 @@ async def stream_research(
         "X-Title": "cc-research",
     }
 
+    yield Event(
+        type="log", topic=topic,
+        payload={"level": "info", "message": f"prompt built · {len(prompt)} chars"},
+    )
+
     timeout = httpx.Timeout(timeout_s, connect=10.0, read=timeout_s, write=timeout_s)
     async with httpx.AsyncClient(timeout=timeout) as client:
         attempts = 0
@@ -59,6 +65,18 @@ async def stream_research(
             if cancel.is_set():
                 raise asyncio.CancelledError
             try:
+                yield Event(
+                    type="log", topic=topic,
+                    payload={
+                        "level": "info",
+                        "message": (
+                            f"POST /v1/chat/completions · model={model_id} · max_tokens={max_tokens}"
+                            f" · web_search={'on (:online)' if web_search else 'off'}"
+                            f" · timeout={int(timeout_s)}s · attempt {attempts}"
+                        ),
+                    },
+                )
+                req_start = time.monotonic()
                 async with client.stream("POST", OPENROUTER_URL, json=body, headers=headers) as resp:
                     if resp.status_code == 429 and attempts < 2:
                         retry_after = resp.headers.get("Retry-After")
@@ -76,6 +94,15 @@ async def stream_research(
                         raise ProviderError(
                             f"OpenRouter HTTP {resp.status_code}: {text.decode('utf-8', 'replace')[:300]}"
                         )
+
+                    elapsed = time.monotonic() - req_start
+                    yield Event(
+                        type="log", topic=topic,
+                        payload={
+                            "level": "success",
+                            "message": f"response {resp.status_code} · first byte in {elapsed:.2f}s · streaming…",
+                        },
+                    )
 
                     async for ev in _parse_openai_sse(resp, topic, cancel):
                         yield ev
@@ -138,6 +165,11 @@ async def _parse_openai_sse(
                         if not card or card.title in seen_titles:
                             continue
                         seen_titles.add(card.title)
+                        title_preview = card.title[:70] + ("…" if len(card.title) > 70 else "")
+                        yield Event(
+                            type="log", topic=topic,
+                            payload={"level": "success", "message": f"+card · “{title_preview}”"},
+                        )
                         yield Event(
                             type="card",
                             topic=topic,

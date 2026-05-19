@@ -17,15 +17,18 @@ export function SourceEditor() {
   };
 
   return (
-    <section className="section col">
-      <h2>Sources</h2>
+    <section>
+      <div className="label-row">
+        <span className="label">▸ Sources ({sources.length})</span>
+        <span className="label-hint">preferred outlets</span>
+      </div>
       {sources.length > 0 && (
-        <div className="chip-row">
+        <div className="chip-row" style={{ marginBottom: 10 }}>
           {sources.map((s) => (
             <span key={s.name} className="chip" title={s.url}>
               {s.name}
               <button aria-label={`Remove ${s.name}`} onClick={() => removeSource(s.name)}>
-                ×
+                ✕
               </button>
             </span>
           ))}
@@ -45,10 +48,22 @@ export function SourceEditor() {
             if (e.key === "Enter") submit();
           }}
         />
-        <button onClick={submit}>Add source</button>
+        <button className="mini" onClick={submit}>
+          + Add source
+        </button>
       </div>
-      <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>
-        arXiv, X, YouTube, LinkedIn are pinned by default and applied to every topic.
+      <p
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--ink-soft)",
+          marginTop: 8,
+          marginBottom: 0,
+          fontFamily: "var(--mono)",
+        }}
+      >
+        arXiv · X · YouTube · LinkedIn pinned by default
       </p>
     </section>
   );
