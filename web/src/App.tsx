@@ -29,6 +29,8 @@ export function App() {
   const status = useLiveRun((s) => s.status);
   const elapsedMs = useLiveRun((s) => s.elapsedMs);
   const tick = useLiveRun((s) => s.tickElapsed);
+  const lastError = useLiveRun((s) => s.lastError);
+  const dismissError = useLiveRun((s) => s.dismissError);
   const longDate = useLongDate();
 
   useEffect(() => {
@@ -99,6 +101,17 @@ export function App() {
               <div className="banner">
                 No API keys configured. Set <code>ANTHROPIC_API_KEY</code> and/or{" "}
                 <code>OPENROUTER_API_KEY</code> in <code>.env</code> and restart the server.
+              </div>
+            )}
+            {lastError && (
+              <div className="banner danger banner-error">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ marginRight: 8 }}>
+                    API error{lastError.topic ? ` · [${lastError.topic}]` : ""}:
+                  </strong>
+                  <span style={{ wordBreak: "break-word" }}>{lastError.message}</span>
+                </div>
+                <button className="mini" onClick={dismissError}>Dismiss</button>
               </div>
             )}
 

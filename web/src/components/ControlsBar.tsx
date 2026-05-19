@@ -7,8 +7,8 @@ import { ResultFilter } from "./ResultFilter";
 export function ControlsBar() {
   return (
     <div className="controls-bar">
-      <div className="controls-row controls-row--top">
-        <div className="controls-cell controls-cell--filter">
+      <div className="controls-row controls-row--meta">
+        <div className="controls-cell">
           <span className="label">▸ Filter results</span>
           <ResultFilter />
         </div>
@@ -16,17 +16,15 @@ export function ControlsBar() {
           <span className="label">▸ Mode</span>
           <ModePicker />
         </div>
-        <div className="controls-cell controls-cell--model">
+        <div className="controls-cell">
           <ModelPicker />
         </div>
       </div>
-      <div className="controls-row controls-row--bottom">
-        <div className="controls-cell controls-cell--topics">
-          <TopicEditor />
-        </div>
-        <div className="controls-cell controls-cell--run">
-          <RunButton />
-        </div>
+      <div className="controls-row controls-row--topics">
+        <TopicEditor />
+      </div>
+      <div className="controls-row controls-row--run">
+        <RunButton />
       </div>
     </div>
   );

@@ -17,7 +17,7 @@
 html, body, #root {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  height: 100%;
   background: var(--paper);
   background-image:
     radial-gradient(circle at 20% 10%, rgba(200,74,62,0.04) 0%, transparent 40%),
@@ -28,7 +28,8 @@ html, body, #root {
   line-height: 1.55;
 }
 
-#root { display: flex; flex-direction: column; min-height: 100vh; }
+body { overflow: hidden; }  /* sidebar + main scroll internally; log stays pinned */
+#root { display: flex; flex-direction: column; height: 100vh; }
 
 .display { font-family: var(--display); }
 .mono { font-family: var(--mono); }
@@ -137,7 +138,7 @@ input:focus, select:focus, textarea:focus {
 a { color: var(--red); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* Layout */
+/* Layout — exact viewport height so the log row never drifts off-screen */
 .app {
   display: grid;
   grid-template-columns: 288px 1fr;
@@ -146,9 +147,11 @@ a:hover { text-decoration: underline; }
     "sidebar main"
     "log     log";
   flex: 1;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;            /* required for inner overflow:auto to take effect */
   position: relative;
   z-index: 1;
+  overflow: hidden;
 }
 
 /* Sidebar */
@@ -259,38 +262,49 @@ a:hover { text-decoration: underline; }
 .control-row { margin-bottom: 22px; }
 .control-row:last-child { margin-bottom: 0; }
 
-/* Top controls bar */
+/* Top controls bar — 3 stacked full-width rows */
 .controls-bar {
   background: var(--paper-dark);
   border: 1px solid var(--ink);
   box-shadow: 6px 6px 0 var(--ink);
-  padding: 14px 18px;
+  padding: 16px 18px;
   margin-bottom: 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
-.controls-row {
+
+/* Row 1: filter / mode / model — 3 columns */
+.controls-row--meta {
   display: grid;
-  gap: 14px;
+  grid-template-columns: 1.4fr 1fr 1.6fr;
+  gap: 16px;
   align-items: end;
 }
-.controls-row--top {
-  grid-template-columns: 1.4fr 1fr 1.6fr;
+.controls-row--meta .controls-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
-.controls-row--bottom {
-  grid-template-columns: 1fr auto;
+.controls-row--meta .controls-cell .label { margin: 0; }
+
+/* Row 2: topics editor — full width */
+.controls-row--topics > section {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--ink-soft);
 }
-.controls-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.controls-cell .label { margin: 0; }
-.controls-cell--topics > section,
-.controls-cell--filter > * { margin: 0; }
-.controls-cell--run { align-self: stretch; }
-.controls-cell--run section { width: 220px; }
+
+/* Row 3: run button — full width, prominent */
+.controls-row--run > section { margin: 0; }
+.controls-row--run .run-button {
+  font-size: 16px;
+  letter-spacing: 0.18em;
+}
+
 @media (max-width: 880px) {
-  .controls-row--top { grid-template-columns: 1fr; }
-  .controls-row--bottom { grid-template-columns: 1fr; }
-  .controls-cell--run section { width: 100%; }
+  .controls-row--meta { grid-template-columns: 1fr; }
 }
 
 /* Result filter */
@@ -516,8 +530,46 @@ a:hover { text-decoration: underline; }
 .topic-history-item.viewing .file-label,
 .topic-history-item.viewing .file-path { color: var(--paper); opacity: 0.85; }
 .topic-history-row1 {
-  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  display: flex; align-items: center; gap: 6px;
 }
+.topic-history-row1 .topic-history-name { flex: 1; min-width: 0; }
+.topic-history-delete {
+  background: transparent;
+  border: 1px solid var(--ink-soft);
+  padding: 1px 6px;
+  color: var(--ink-soft);
+  opacity: 0.55;
+  transition: opacity 0.12s, color 0.12s, background 0.12s, border-color 0.12s;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+  box-shadow: none;
+  border-radius: 0;
+}
+.topic-history-item:hover .topic-history-delete { opacity: 1; border-color: var(--red); color: var(--red); }
+.topic-history-delete:hover {
+  opacity: 1;
+  background: var(--red);
+  color: var(--paper);
+  border-color: var(--red);
+}
+.topic-history-item.viewing .topic-history-delete {
+  color: var(--paper);
+  border-color: var(--paper);
+  opacity: 0.7;
+}
+.topic-history-item.viewing .topic-history-delete:hover {
+  background: var(--red);
+  color: var(--paper);
+  border-color: var(--red);
+  opacity: 1;
+}
+.topic-history-item.failed {
+  border-left-color: var(--red);
+  background: rgba(200, 74, 62, 0.05);
+}
+.topic-history-item.failed .topic-history-delete { opacity: 1; border-color: var(--red); color: var(--red); }
 .topic-history-name {
   font-family: var(--display);
   font-size: 14px;
@@ -634,18 +686,23 @@ a:hover { text-decoration: underline; }
 .banner.danger { color: var(--paper); background: var(--red); box-shadow: 4px 4px 0 var(--ink); }
 .banner.info { color: var(--ink); }
 
-/* Transmission log */
+/* Transmission log — pinned to bottom of viewport via the grid's bottom row */
 .log-panel {
   grid-area: log;
   background: var(--ink);
   color: var(--paper);
-  border-top: 1px solid var(--ink);
+  border-top: 1px solid var(--paper-darker);
+  box-shadow: 0 -2px 0 rgba(58, 53, 48, 0.2);
   font-family: var(--mono);
   font-size: 12px;
   display: flex;
   flex-direction: column;
   height: 320px;
+  max-height: 60vh;          /* never eats more than 60% of viewport even if dragged */
+  min-height: 38px;
   transition: height 0.18s ease;
+  position: relative;
+  z-index: 5;                /* sits above main content shadows / popovers */
 }
 .log-panel.collapsed { height: 38px; overflow: hidden; }
 

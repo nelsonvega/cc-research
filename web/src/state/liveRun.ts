@@ -30,6 +30,12 @@ export type RunStats = {
   events: number;
 };
 
+export type LastError = {
+  topic: string | null;
+  message: string;
+  ts: string;
+} | null;
+
 type LiveRunState = {
   runId: string | null;
   status: RunStatus | null;
@@ -40,11 +46,13 @@ type LiveRunState = {
   topicOrder: string[];
   logs: LogLine[];
   stats: RunStats;
+  lastError: LastError;
 
   start: (runId: string, mode: Mode, topics: string[]) => void;
   applyEvent: (ev: import("../types").SseEvent) => void;
   clear: () => void;
   tickElapsed: () => void;
+  dismissError: () => void;
 };
 
 const LOG_CAP = 2000;
@@ -61,7 +69,7 @@ const emptyStats: RunStats = {
 
 const initial: Omit<
   LiveRunState,
-  "start" | "applyEvent" | "clear" | "tickElapsed"
+  "start" | "applyEvent" | "clear" | "tickElapsed" | "dismissError"
 > = {
   runId: null,
   status: null,
@@ -72,6 +80,7 @@ const initial: Omit<
   topicOrder: [],
   logs: [],
   stats: { ...emptyStats },
+  lastError: null,
 };
 
 export const useLiveRun = create<LiveRunState>((set, get) => ({
@@ -110,9 +119,11 @@ export const useLiveRun = create<LiveRunState>((set, get) => ({
         },
       ],
       stats: { ...emptyStats },
+      lastError: null,
     }),
 
   clear: () => set(initial),
+  dismissError: () => set({ lastError: null }),
 
   tickElapsed: () => {
     const { startedAt, status } = get();
@@ -218,6 +229,7 @@ export const useLiveRun = create<LiveRunState>((set, get) => ({
             upsertTopic(ev.topic, { status: "failed", error: msg });
           }
           logsToAppend.push({ ts: ev.ts, level: "error", topic: ev.topic, message: msg });
+          next.lastError = { topic: ev.topic, message: msg, ts: ev.ts };
           break;
         }
         case "done": {

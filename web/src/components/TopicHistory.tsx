@@ -97,10 +97,11 @@ export function TopicHistory() {
       <div className="topic-history-list">
         {filtered.map((e) => {
           const isViewing = viewing?.run_id === e.runId;
+          const isFailed = e.status === "failed";
           return (
             <div
               key={`${e.runId}::${e.slug}`}
-              className={`topic-history-item ${isViewing ? "viewing" : ""}`}
+              className={`topic-history-item ${isViewing ? "viewing" : ""} ${isFailed ? "failed" : ""}`}
               onClick={() => {
                 clearLive();
                 view(e.runId);
@@ -110,6 +111,19 @@ export function TopicHistory() {
               <div className="topic-history-row1">
                 <span className="topic-history-name">{e.topic}</span>
                 <span className={`status-pill ${e.status}`}>{e.status}</span>
+                <button
+                  className="topic-history-delete"
+                  title="Delete this run (removes all of its topic files)"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    const what = isFailed ? "failed run" : "run";
+                    if (confirm(`Delete this ${what} and all of its topics?\n\n${e.runId}`)) {
+                      remove(e.runId);
+                    }
+                  }}
+                >
+                  ✕
+                </button>
               </div>
               <div className="topic-history-meta">
                 {whenStr(e.createdAt)} · {e.cardCount} card{e.cardCount === 1 ? "" : "s"}
@@ -129,20 +143,10 @@ export function TopicHistory() {
         <div className="topic-history-footer">
           <span className="label-hint">
             {Array.from(new Set(entries.map((e) => e.topic))).length} unique topics
+            {" · "}
+            {entries.filter((e) => e.status === "failed").length > 0 &&
+              `${entries.filter((e) => e.status === "failed").length} failed`}
           </span>
-          <button
-            className="mini"
-            onClick={() => {
-              if (!viewing) return;
-              if (confirm(`Delete this entire run (${viewing.run_id})?`)) {
-                remove(viewing.run_id);
-              }
-            }}
-            disabled={!viewing}
-            title="Delete the currently-viewed run"
-          >
-            Delete viewing
-          </button>
         </div>
       )}
     </section>

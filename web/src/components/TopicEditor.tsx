@@ -69,7 +69,9 @@ export function TopicEditor() {
     <section style={{ width: "100%" }}>
       <div className="label-row">
         <span className="label">▸ Topics ({topics.length})</span>
-        <span className="label-hint">what to watch</span>
+        {modelUsed && suggestions.length > 0 && (
+          <span className="label-hint">suggested via {modelUsed}</span>
+        )}
       </div>
       <div className="chip-row" style={{ marginBottom: 10 }}>
         {topics.map((t) => (
