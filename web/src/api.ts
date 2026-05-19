@@ -56,6 +56,40 @@ export const api = {
   exportUrl(runId: string): string {
     return `/api/runs/${encodeURIComponent(runId)}/export.md`;
   },
+
+  async suggestSources(args: {
+    keyword?: string;
+    topics: string[];
+    mode: import("./types").Mode;
+    model_override: string | null;
+  }): Promise<{
+    items: { name: string; url: string | null }[];
+    error: string | null;
+    model: string;
+  }> {
+    return json(
+      await fetch("/api/suggest/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      })
+    );
+  },
+
+  async suggestTopics(args: {
+    seed?: string;
+    topics: string[];
+    mode: import("./types").Mode;
+    model_override: string | null;
+  }): Promise<{ items: string[]; error: string | null; model: string }> {
+    return json(
+      await fetch("/api/suggest/topics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      })
+    );
+  },
 };
 
 /**

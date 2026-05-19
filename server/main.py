@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from .api import events as events_api
 from .api import models_router
 from .api import runs as runs_api
+from .api import suggest as suggest_api
 from .config import settings
 
 app = FastAPI(title="cc-research", version="0.1.0")
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(models_router.router)
 app.include_router(runs_api.router)
 app.include_router(events_api.router)
+app.include_router(suggest_api.router)
 
 
 @app.get("/api/health")
